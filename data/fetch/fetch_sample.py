@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import os
 import sys
-import urllib.request
 from pathlib import Path
 
+import gdown
 from dotenv import load_dotenv
+
+import pandas as pd
 
 # Project root is two levels up from data/fetch/
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -21,28 +23,35 @@ PROCESSED_DIR = PROJECT_ROOT / "data" / "processed"
 SAMPLE_OUTPUT = PROCESSED_DIR / "sample.parquet"
 METADATA_OUTPUT = PROCESSED_DIR / "sample_metadata.json"
 
-def build_drive_url(file_id: str) -> str:
-    return f"https://drive.google.com/uc?export=download&id={file_id}"
 
-
-def download_file(url: str, output_path: Path) -> None:
+def download_from_drive(file_id: str, output_path: Path) -> None:
+    """
+    Download a Google Drive file by ID using gdown.
+    gdown handles the virus-scan confirmation page that Drive shows for large
+    files, which causes urllib / requests to silently save an HTML page instead
+    of the actual file.
+    """
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    print(f"  Downloading → {output_path}")
-    try:
-        urllib.request.urlretrieve(url, output_path)
-    except Exception as e:
-        raise RuntimeError(f"Failed to download {output_path.name}: {e}") from e
+    print(f"  Downloading -> {output_path}")
+    url = f"https://drive.google.com/uc?id={file_id}"
+    success = gdown.download(url, str(output_path), quiet=False)
+    if not success:
+        raise RuntimeError(
+            f"gdown failed to download file ID {file_id!r}.\n"
+            "Check that the file is shared as 'Anyone with the link can view'."
+        )
 
 
 def validate_sample(path: Path) -> None:
     """Verify the downloaded parquet has the columns defined in src/schema.py."""
     try:
-        import pandas as pd
-    except ImportError:
-        print("  (pandas not installed — skipping schema validation)")
-        return
+        df = pd.read_parquet(path)
+    except Exception as e:
+        raise RuntimeError(
+            f"Downloaded file is not a valid parquet — it may be an HTML error page.\n"
+            f"Delete {path.name} and re-run this script.\nOriginal error: {e}"
+        ) from e
 
-    df = pd.read_parquet(path)
     required = FEATURE_COLUMNS + [LABEL_COLUMN]
     missing = [c for c in required if c not in df.columns]
     if missing:
@@ -64,14 +73,14 @@ def main() -> None:
     if SAMPLE_OUTPUT.exists():
         print(f"sample.parquet already exists: {SAMPLE_OUTPUT}")
     else:
-        download_file(build_drive_url(SAMPLE_FILE_ID), SAMPLE_OUTPUT)
+        download_from_drive(SAMPLE_FILE_ID, SAMPLE_OUTPUT)
         validate_sample(SAMPLE_OUTPUT)
 
     if METADATA_FILE_ID:
         if METADATA_OUTPUT.exists():
             print(f"sample_metadata.json already exists: {METADATA_OUTPUT}")
         else:
-            download_file(build_drive_url(METADATA_FILE_ID), METADATA_OUTPUT)
+            download_from_drive(METADATA_FILE_ID, METADATA_OUTPUT)
 
     print("\nDone.")
     print(f"  Sample:   {SAMPLE_OUTPUT}")

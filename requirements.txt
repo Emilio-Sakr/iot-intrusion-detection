@@ -2,6 +2,7 @@
 pandas>=2.0
 pyarrow>=14.0
 python-dotenv>=1.0
+gdown>=5.0
 
 # Schema validation
 pydantic>=2.0

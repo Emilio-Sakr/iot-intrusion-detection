@@ -51,25 +51,24 @@ The script validates the downloaded file against the schema in `src/schema.py` b
 python data/fetch/prepare_sample.py
 ```
 
-**What it does:**
+**What it does (two-pass pipeline):**
 
-| Phase | Description |
+| Pass | Description |
 |---|---|
-| Stratified sampling | Reads each CSV in chunks of 100 000 rows. Samples 10 % of each class per chunk, preserving class proportions without loading the full dataset into memory. |
-| Class balancing | After all chunks are processed, caps every class at the minority-class count (configurable via `MAX_SAMPLES_PER_CLASS`). This prevents the majority class from dominating training. |
-| Schema enforcement | Selects and reorders columns to exactly match `FEATURE_COLUMNS + [LABEL_COLUMN]` from `src/schema.py`. Raises an error for any missing required column. |
+| Pass 1: count | Scans all CSVs to count per-class totals. Computes a target for each class: classes above cap get downsampled, classes below floor get oversampled, everything else keeps 100% of its rows. |
+| Pass 2: sample | Reads CSVs in chunks. Each class is sampled at its own rate -- rare classes keep every row, majority classes are cut proportionally. After concat, any class still below floor is oversampled with replacement. |
+| Schema enforcement | Columns are normalized and reordered to match `FEATURE_COLUMNS + [LABEL_COLUMN]` from `src/schema.py`. Missing columns are zero-filled with a warning. |
 
 Outputs:
-- `data/processed/sample.parquet` — balanced, schema-compliant sample
-- `data/processed/sample_metadata.json` — row counts and class distributions at each stage
+- `data/processed/sample.parquet` -- balanced, schema-compliant sample
+- `data/processed/sample_metadata.json` -- per-class targets, raw counts, and final distribution
 
 **Tunable constants** (top of `data/fetch/prepare_sample.py`):
 
 | Constant | Default | Description |
 |---|---|---|
-| `SAMPLE_FRACTION` | `0.10` | Fraction of each class kept per chunk |
-| `MAX_SAMPLES_PER_CLASS` | `None` | Row cap per class after balancing (`None` = median class count) |
-| `MIN_SAMPLES_PER_CLASS_WARN` | `200` | Warns if any class falls below this after balancing |
+| `MAX_SAMPLES_PER_CLASS` | `None` | Downsample classes above this (`None` = median class count) |
+| `MIN_SAMPLES_PER_CLASS` | `None` | Oversample classes below this with replacement (`None` = cap // 10) |
 | `CHUNK_SIZE` | `100_000` | Rows read per CSV chunk |
 | `RANDOM_SEED` | `42` | Reproducibility seed |
 
