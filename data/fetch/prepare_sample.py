@@ -7,6 +7,14 @@ from pathlib import Path
 import pandas as pd
 from dotenv import load_dotenv
 
+def normalize_column_name(name: str) -> str:
+    return (
+        name.strip()
+        .lower()
+        .replace(" ", "_")
+        .replace("-", "_")
+    )
+
 # Project root is two levels up from data/fetch/
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(PROJECT_ROOT))
@@ -50,13 +58,32 @@ def find_csv_files(raw_dir: Path) -> list[Path]:
     return csv_files
 
 
-def validate_chunk_columns(chunk: pd.DataFrame, filename: str) -> None:
-    missing = [c for c in REQUIRED_COLUMNS if c not in chunk.columns]
-    if missing:
+def align_chunk_to_schema(
+    chunk: pd.DataFrame,
+    filename: str,
+    warned_missing_features: dict[str, set[str]],
+) -> pd.DataFrame:
+    if LABEL_COLUMN not in chunk.columns:
         raise ValueError(
-            f"Missing required columns in {filename}: {missing}\n"
+            f"Missing required label column in {filename}: ['{LABEL_COLUMN}']\n"
             f"Expected columns are defined in src/schema.py."
         )
+
+    missing_features = [c for c in FEATURE_COLUMNS if c not in chunk.columns]
+    if missing_features:
+        file_warned = warned_missing_features.setdefault(filename, set())
+        newly_missing = [c for c in missing_features if c not in file_warned]
+        if newly_missing:
+            print(
+                f"  Warning: {filename} is missing feature column(s) "
+                f"{newly_missing}; filling with 0.0"
+            )
+            file_warned.update(newly_missing)
+        for col in missing_features:
+            chunk[col] = 0.0
+
+    # Keep only schema-defined columns in canonical order
+    return chunk[REQUIRED_COLUMNS].copy()
 
 
 def process_files(csv_files: list[Path]) -> tuple[pd.DataFrame, dict]:
@@ -74,6 +101,7 @@ def process_files(csv_files: list[Path]) -> tuple[pd.DataFrame, dict]:
     rows_sampled = 0
     class_counts_before: dict[str, int] = {}
     class_counts_after_sampling: dict[str, int] = {}
+    warned_missing_features: dict[str, set[str]] = {}
 
     for file_index, csv_file in enumerate(csv_files, start=1):
         print(f"\n[{file_index}/{len(csv_files)}] Processing: {csv_file.name}")
@@ -81,10 +109,12 @@ def process_files(csv_files: list[Path]) -> tuple[pd.DataFrame, dict]:
         for chunk_index, chunk in enumerate(
             pd.read_csv(csv_file, chunksize=CHUNK_SIZE), start=1
         ):
-            validate_chunk_columns(chunk, csv_file.name)
-
-            # Keep only schema-defined columns in canonical order
-            chunk = chunk[REQUIRED_COLUMNS].copy()
+            chunk.columns = [normalize_column_name(col) for col in chunk.columns]
+            chunk = align_chunk_to_schema(
+                chunk=chunk,
+                filename=csv_file.name,
+                warned_missing_features=warned_missing_features,
+            )
 
             rows_seen += len(chunk)
 
