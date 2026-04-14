@@ -10,7 +10,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy source code
 COPY src/ ./src/
 COPY models/ ./models/
-COPY data/fetch_sample.py ./data/fetch_sample.py
+COPY data/fetch/ ./data/fetch/
 
 # Expose the FastAPI port
 EXPOSE 8000
