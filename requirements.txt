@@ -1,8 +1,10 @@
 # Data pipeline
 pandas>=2.0
+matplotlib>=3.8
 pyarrow>=14.0
 python-dotenv>=1.0
 gdown>=5.0
+scikit-learn>=1.4
 
 # Schema validation
 pydantic>=2.0

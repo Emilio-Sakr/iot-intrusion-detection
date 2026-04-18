@@ -55,12 +55,12 @@ python data/fetch/prepare_sample.py
 
 | Pass | Description |
 |---|---|
-| Pass 1: count | Scans all CSVs to count per-class totals. Computes a target for each class: classes above cap get downsampled, classes below floor get oversampled, everything else keeps 100% of its rows. |
-| Pass 2: sample | Reads CSVs in chunks. Each class is sampled at its own rate -- rare classes keep every row, majority classes are cut proportionally. After concat, any class still below floor is oversampled with replacement. |
+| Pass 1: count | Scans all CSVs to count per-class totals and compute a downsampling cap. |
+| Pass 2: sample | Reads CSVs in chunks. Minority classes keep all rows, majority classes are reduced proportionally. |
 | Schema enforcement | Columns are normalized and reordered to match `FEATURE_COLUMNS + [LABEL_COLUMN]` from `src/schema.py`. Missing columns are zero-filled with a warning. |
 
 Outputs:
-- `data/processed/sample.parquet` -- balanced, schema-compliant sample
+- `data/processed/sample.parquet` -- schema-compliant sample for analysis/modeling
 - `data/processed/sample_metadata.json` -- per-class targets, raw counts, and final distribution
 
 **Tunable constants** (top of `data/fetch/prepare_sample.py`):
@@ -68,9 +68,27 @@ Outputs:
 | Constant | Default | Description |
 |---|---|---|
 | `MAX_SAMPLES_PER_CLASS` | `None` | Downsample classes above this (`None` = median class count) |
-| `MIN_SAMPLES_PER_CLASS` | `None` | Oversample classes below this with replacement (`None` = cap // 10) |
 | `CHUNK_SIZE` | `100_000` | Rows read per CSV chunk |
 | `RANDOM_SEED` | `42` | Reproducibility seed |
+
+### Train/test pipeline from the notebook
+
+Use [src/data_pipeline.py](src/data_pipeline.py) from the notebook:
+
+```python
+from src.data_pipeline import build_training_splits, describe_split
+
+splits = build_training_splits(test_size=0.2, random_state=42)
+
+print(splits.X_train.shape, splits.X_test.shape)
+print(describe_split(splits.y_train, splits.y_test))
+```
+
+This flow:
+- loads `data/processed/sample.parquet`
+- cleans missing labels, duplicate rows, and non-numeric feature values
+- performs a stratified train/test split
+- oversamples only the training split to avoid data leakage
 
 ---
 
