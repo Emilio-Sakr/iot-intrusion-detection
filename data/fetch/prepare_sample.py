@@ -20,24 +20,19 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(PROJECT_ROOT))
 load_dotenv(PROJECT_ROOT / ".env")
 
+from src.config import (
+    CHUNK_SIZE,
+    DATASET_METADATA_PATH,
+    DATASET_PATH,
+    MAX_SAMPLES_PER_CLASS,
+    PROCESSED_DIR,
+    RANDOM_STATE,
+    RAW_DIR,
+)
 from src.schema import ATTACK_CLASSES, FEATURE_COLUMNS, LABEL_COLUMN
 
-RAW_DIR = PROJECT_ROOT / "data" / "raw"
-PROCESSED_DIR = PROJECT_ROOT / "data" / "processed"
-
-OUTPUT_FILE = PROCESSED_DIR / "sample.parquet"
-METADATA_FILE = PROCESSED_DIR / "sample_metadata.json"
-
-RANDOM_SEED = 42
-
-# Rows read at a time from each CSV
-CHUNK_SIZE = 100_000
-
-# Downsample classes above this.  None -> median class count.
-# Classes at or below this keep 100% of their rows (no oversampling here --
-# that belongs in the training preprocessing step, after train/test split,
-# to avoid data leakage).
-MAX_SAMPLES_PER_CLASS: int | None = None
+OUTPUT_FILE = DATASET_PATH
+METADATA_FILE = DATASET_METADATA_PATH
 
 REQUIRED_COLUMNS = FEATURE_COLUMNS + [LABEL_COLUMN]
 
@@ -162,7 +157,7 @@ def process_files(csv_files: list[Path]) -> tuple[pd.DataFrame, dict]:
                 .apply(
                     lambda x: x.sample(
                         n=max(1, int(len(x) * sample_fracs.get(x.name, 1.0))),
-                        random_state=RANDOM_SEED,
+                        random_state=RANDOM_STATE,
                     )
                 )
                 .reset_index(drop=True)
@@ -200,7 +195,7 @@ def process_files(csv_files: list[Path]) -> tuple[pd.DataFrame, dict]:
         "label_column": LABEL_COLUMN,
         "max_samples_per_class": cap,
         "chunk_size": CHUNK_SIZE,
-        "random_seed": RANDOM_SEED,
+        "random_seed": RANDOM_STATE,
         "class_distribution_raw": class_totals,
         "class_targets": targets,
         "class_distribution_final": class_counts_balanced,

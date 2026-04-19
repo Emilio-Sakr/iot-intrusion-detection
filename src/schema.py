@@ -1,6 +1,5 @@
 # src/schema.py
 from pydantic import BaseModel
-from typing import Literal
 
 LABEL_COLUMN = "label"
 
@@ -16,21 +15,55 @@ FEATURE_COLUMNS = [
     "arp", "icmp", "igmp", "ipv", "llc",
     "tot_sum", "min", "max", "avg", "std",
     "tot_size", "iat", "number", "magnitue",
-    "radius", "covariance", "variance", "weight"
+    "radius", "covariance", "variance", "weight",
 ]
 
+# Full 34-class taxonomy present in data/processed/sample.parquet.
+# Grouped by family for readability; LabelEncoder will sort internally.
 ATTACK_CLASSES = [
     "BenignTraffic",
+    # DDoS family
+    "DDoS-ACK_Fragmentation",
+    "DDoS-HTTP_Flood",
     "DDoS-ICMP_Flood",
+    "DDoS-ICMP_Fragmentation",
+    "DDoS-PSHACK_Flood",
+    "DDoS-RSTFINFlood",
+    "DDoS-SYN_Flood",
+    "DDoS-SlowLoris",
+    "DDoS-SynonymousIP_Flood",
+    "DDoS-TCP_Flood",
     "DDoS-UDP_Flood",
-    "DDoS-TCP_SYN_Flood",
+    "DDoS-UDP_Fragmentation",
+    # DoS family
+    "DoS-HTTP_Flood",
+    "DoS-SYN_Flood",
+    "DoS-TCP_Flood",
     "DoS-UDP_Flood",
+    # Mirai family
     "Mirai-greeth_flood",
-    "MITM-ArpSpoofing",
-    "DNS_Spoofing",
+    "Mirai-greip_flood",
+    "Mirai-udpplain",
+    # Recon family
+    "Recon-HostDiscovery",
+    "Recon-OSScan",
+    "Recon-PingSweep",
     "Recon-PortScan",
+    # Spoofing / MITM
+    "DNS_Spoofing",
+    "MITM-ArpSpoofing",
+    # Scanning / brute
+    "DictionaryBruteForce",
+    "VulnerabilityScan",
+    # Web / application layer
+    "Backdoor_Malware",
     "BrowserHijacking",
+    "CommandInjection",
+    "SqlInjection",
+    "Uploading_Attack",
+    "XSS",
 ]
+
 
 class TrafficRecord(BaseModel):
     flow_duration: float
@@ -80,6 +113,7 @@ class TrafficRecord(BaseModel):
     covariance: float
     variance: float
     weight: float
+
 
 class PredictionResponse(BaseModel):
     prediction: str

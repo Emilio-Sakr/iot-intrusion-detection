@@ -1,7 +1,9 @@
 # IoT Intrusion Detection
 
 Network traffic classification for IoT intrusion detection.
-The dataset covers 47 features and 10 attack/benign classes (see [src/schema.py](src/schema.py)).
+The dataset covers 47 features and 34 attack/benign classes (see [src/schema.py](src/schema.py)).
+
+> **New to the project?** Read [TECHNICAL.md](TECHNICAL.md) for the deep dive on what the pipeline does, the math behind each step, and why each choice was made.
 
 ---
 
@@ -71,24 +73,32 @@ Outputs:
 | `CHUNK_SIZE` | `100_000` | Rows read per CSV chunk |
 | `RANDOM_SEED` | `42` | Reproducibility seed |
 
-### Train/test pipeline from the notebook
+### Preprocessing pipeline
 
-Use [src/data_pipeline.py](src/data_pipeline.py) from the notebook:
+The full preprocessing flow lives in [notebooks/03_preprocessing_pipeline.ipynb](notebooks/03_preprocessing_pipeline.ipynb) and is driven by helpers in [src/data_pipeline.py](src/data_pipeline.py). Running the notebook top to bottom:
+
+1. Loads `data/processed/sample.parquet` and inspects data-quality issues (NaN, inf, duplicates, label drift).
+2. Cleans the dataset — drops missing labels, coerces features, replaces `±inf` with `NaN`, deduplicates.
+3. **Stratified 3-way split** (70 / 15 / 15) — fitting happens on train only to avoid leakage.
+4. Detects constant features (reported) and skewed features (`|skew| > 1.0`, power-transformed).
+5. Fits a single `sklearn.Pipeline`: `SimpleImputer(median)` → `PowerTransformer(yeo-johnson, skewed cols)` → `StandardScaler`.
+6. Fits a `LabelEncoder` and computes balanced `class_weights` (preferred over naive oversampling).
+7. Persists artifacts to `models/preprocessing/` and transformed splits to `data/processed/splits/`.
+
+### Baseline model
+
+[notebooks/02_baseline_logistic_regression.ipynb](notebooks/02_baseline_logistic_regression.ipynb) trains a multinomial Logistic Regression on the persisted splits using the class weights from preprocessing, and saves:
+
+- `models/baseline/logistic_regression.joblib` — the fitted model
+- `models/baseline/logistic_regression_metrics.json` — accuracy, macro-F1, weighted-F1, per-class report (val + test)
+- `models/baseline/logistic_regression_confusion_{val,test}.png` — row-normalized confusion matrices
+
+Reusable evaluation helpers (used by future model notebooks too) live in [src/evaluation.py](src/evaluation.py). Re-load a saved baseline anywhere with:
 
 ```python
-from src.data_pipeline import build_training_splits, describe_split
-
-splits = build_training_splits(test_size=0.2, random_state=42)
-
-print(splits.X_train.shape, splits.X_test.shape)
-print(describe_split(splits.y_train, splits.y_test))
+from src.evaluation import load_baseline
+model, metrics = load_baseline("logistic_regression")
 ```
-
-This flow:
-- loads `data/processed/sample.parquet`
-- cleans missing labels, duplicate rows, and non-numeric feature values
-- performs a stratified train/test split
-- oversamples only the training split to avoid data leakage
 
 ---
 
@@ -97,7 +107,7 @@ This flow:
 Defined in [src/schema.py](src/schema.py):
 
 - **47 features** (all `float`) — network flow statistics, TCP flag counts, protocol indicators
-- **10 classes** — `BenignTraffic` + 9 attack categories
+- **34 classes** — `BenignTraffic` + 33 attack categories (DDoS, DoS, Mirai, Recon, MITM/Spoofing, scanning/brute, application-layer)
 - `TrafficRecord` — Pydantic model for single-record input validation
 - `PredictionResponse` — API response model (prediction, confidence, per-class probabilities)
 

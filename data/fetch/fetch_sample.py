@@ -14,14 +14,19 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(PROJECT_ROOT))
 load_dotenv(PROJECT_ROOT / ".env")
 
+from src.config import (
+    DATASET_METADATA_PATH,
+    DATASET_PATH,
+    ENV_METADATA_FILE_ID,
+    ENV_SAMPLE_FILE_ID,
+)
 from src.schema import FEATURE_COLUMNS, LABEL_COLUMN
 
-SAMPLE_FILE_ID = os.environ.get("SAMPLE_FILE_ID", "")
-METADATA_FILE_ID = os.environ.get("METADATA_FILE_ID", "")
+SAMPLE_FILE_ID = os.environ.get(ENV_SAMPLE_FILE_ID, "")
+METADATA_FILE_ID = os.environ.get(ENV_METADATA_FILE_ID, "")
 
-PROCESSED_DIR = PROJECT_ROOT / "data" / "processed"
-SAMPLE_OUTPUT = PROCESSED_DIR / "sample.parquet"
-METADATA_OUTPUT = PROCESSED_DIR / "sample_metadata.json"
+SAMPLE_OUTPUT = DATASET_PATH
+METADATA_OUTPUT = DATASET_METADATA_PATH
 
 
 def download_from_drive(file_id: str, output_path: Path) -> None:
