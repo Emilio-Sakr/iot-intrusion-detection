@@ -209,3 +209,10 @@ __marimo__/
 # Data files
 data/raw/
 data/processed/
+
+# Trained model artifacts — tree ensembles are multi-GB and regenerable from
+# the notebooks. We keep:
+#   - the small linear model (~16 KB) so comparison tables always resolve
+#   - metrics JSON, params JSON, and confusion-matrix PNGs (narrative evidence)
+models/baseline/*.joblib
+!models/baseline/logistic_regression*.joblib

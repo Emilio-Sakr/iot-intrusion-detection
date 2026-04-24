@@ -1,9 +1,12 @@
 venv/
+env/
 __pycache__/
 *.pyc
-data/raw/
-data/*.csv
+data/
 .git/
+.gitignore
 .env
+.env.example
 notebooks/
 tests/
+*.md
