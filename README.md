@@ -6,32 +6,14 @@ A machine-learning pipeline and serving API that classifies IoT network flows as
 
 ## Quick start
 
-### Option A — pull the prebuilt image from Docker Hub
+Pull the prebuilt image from Docker Hub and run it:
 
 ```bash
-docker pull <dockerhub-user>/iot-intrusion-detection:latest
-docker run --rm -p 8000:8000 <dockerhub-user>/iot-intrusion-detection:latest
+docker pull emiliosakr/iot-intrusion-detection:latest
+docker run --rm -p 8000:8000 emiliosakr/iot-intrusion-detection:latest
 ```
 
 Open `http://localhost:8000/docs` for the interactive Swagger UI.
-
-### Option B — build from source
-
-```bash
-git clone https://github.com/Emilio-Sakr/iot-intrusion-detection.git
-cd iot-intrusion-detection
-docker build -t iot-intrusion-detection .
-docker run --rm -p 8000:8000 iot-intrusion-detection
-```
-
-### Option C — run directly with Python
-
-```bash
-pip install -r requirements.txt
-uvicorn src.api:app --port 8000
-```
-
-Requires Python 3.11+ and the preprocessor + trained model under `models/` (produced by the training notebooks — see below).
 
 ---
 

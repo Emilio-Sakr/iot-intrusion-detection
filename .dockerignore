@@ -10,3 +10,8 @@ data/
 notebooks/
 tests/
 *.md
+
+# Only ship the served model — the flat RF and obsolete two-stage joblibs
+# together add ~10 GB and are never loaded at runtime.
+models/baseline/*.joblib
+!models/baseline/three_stage_rf.joblib
